@@ -1,10 +1,11 @@
-const CACHE = "fitness-pt-v1";
+const CACHE = "fitness-pt-v2";
 const FILES = [
   "./",
   "./index.html",
   "./style.css",
   "./data.js",
   "./icons.js",
+  "./photos.js",
   "./app.js",
   "./manifest.json",
   "./icons/icon-192.png",

@@ -151,8 +151,8 @@ const PLAN = {
         },
         {
           id: "finisher-bike",
-          name: "Finisher: Airbike/Ergometer Intervalle",
-          equipment: "Airbike oder Fahrrad-Ergometer",
+          name: "Finisher: Crosstrainer Intervalle",
+          equipment: "Crosstrainer",
           illus: "cardio",
           category: "cardio",
           sets: 6,

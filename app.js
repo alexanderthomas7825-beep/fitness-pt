@@ -62,6 +62,65 @@ function nextBaseWeight(ex, usedWeight, feedback) {
   return roundStep(usedWeight + inc, inc);
 }
 
+// ---------- Übungs-Anzeige & Fotos ----------
+let expandedExercises = new Set();
+let photoObjectUrls = {};
+let pendingPhotoExerciseId = null;
+
+function setMediaStatus(exId, text) {
+  const el = document.getElementById(`media-status-${exId}`);
+  if (el) el.textContent = text;
+}
+
+async function refreshMediaPanel(ex) {
+  const panel = document.getElementById(`media-${ex.id}`);
+  if (!panel) return;
+  let blob = null;
+  try {
+    blob = await getExercisePhoto(ex.id);
+  } catch (e) {
+    blob = null;
+  }
+
+  if (photoObjectUrls[ex.id]) {
+    URL.revokeObjectURL(photoObjectUrls[ex.id]);
+    delete photoObjectUrls[ex.id];
+  }
+
+  // Panel könnte durch einen zwischenzeitlichen Re-Render ersetzt worden sein
+  const freshPanel = document.getElementById(`media-${ex.id}`);
+  if (!freshPanel) return;
+  const imgWrap = freshPanel.querySelector(".media-image");
+  const deleteBtn = freshPanel.querySelector(".photo-delete-btn");
+  if (!imgWrap) return;
+
+  if (blob) {
+    const url = URL.createObjectURL(blob);
+    photoObjectUrls[ex.id] = url;
+    imgWrap.innerHTML = `<img src="${url}" class="media-photo" alt="${ex.name}" />`;
+    freshPanel.dataset.hasPhoto = "true";
+    if (deleteBtn) deleteBtn.hidden = false;
+  } else {
+    imgWrap.innerHTML = iconFor(ex.illus);
+    freshPanel.dataset.hasPhoto = "false";
+    if (deleteBtn) deleteBtn.hidden = true;
+  }
+}
+
+function renderMediaPanel(ex) {
+  return `
+    <div class="media-panel" id="media-${ex.id}" data-ex="${ex.id}" data-has-photo="false">
+      <div class="media-image">${iconFor(ex.illus)}</div>
+      <div class="media-status" id="media-status-${ex.id}"></div>
+      <div class="media-actions">
+        <button class="photo-add-btn" data-ex="${ex.id}">📷 Foto hinzufügen/ersetzen</button>
+        <button class="photo-delete-btn" data-ex="${ex.id}" hidden>🗑️ Foto löschen</button>
+      </div>
+      <div class="media-hint">Eigene Fotos werden nur auf diesem Gerät gespeichert und gehen beim Löschen der Browserdaten verloren.</div>
+    </div>
+  `;
+}
+
 // ---------- Timer ----------
 let activeTimer = null;
 
@@ -172,10 +231,16 @@ function render() {
   `;
 
   attachHandlers(day);
+
+  expandedExercises.forEach((exId) => {
+    const ex = day.exercises.find((e) => e.id === exId);
+    if (ex) refreshMediaPanel(ex);
+  });
 }
 
 function renderExercise(ex, deload) {
   const weight = displayWeightFor(ex);
+  const expanded = expandedExercises.has(ex.id);
   const needsFirstWeight = ex.increment > 0 && weight == null;
   const feedback = state.currentFeedback[ex.id] || "passt";
 
@@ -224,11 +289,12 @@ function renderExercise(ex, deload) {
 
   return `
     <div class="card" data-ex="${ex.id}">
-      <div class="illus">${iconFor(ex.illus)}</div>
       <div class="card-body">
         <div class="ex-name">${ex.name}</div>
         <div class="ex-equip">${ex.equipment}</div>
         <div class="ex-target">${targetLine}</div>
+        <button class="show-ex-btn" data-ex="${ex.id}">${expanded ? "▲ Übung ausblenden" : "🔍 Übung zeigen"}</button>
+        ${expanded ? renderMediaPanel(ex) : ""}
         ${firstWeightInput}
         ${weightControls}
         ${feedbackControls}
@@ -292,7 +358,63 @@ function attachHandlers(day) {
     });
   });
 
+  document.querySelectorAll(".show-ex-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const exId = btn.dataset.ex;
+      if (expandedExercises.has(exId)) {
+        expandedExercises.delete(exId);
+      } else {
+        expandedExercises.add(exId);
+      }
+      render();
+    });
+  });
+
+  document.querySelectorAll(".photo-add-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      pendingPhotoExerciseId = btn.dataset.ex;
+      const input = document.getElementById("photoFileInput");
+      input.value = "";
+      input.click();
+    });
+  });
+
+  document.querySelectorAll(".photo-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const exId = btn.dataset.ex;
+      const ex = day.exercises.find((e) => e.id === exId);
+      if (!ex) return;
+      setMediaStatus(exId, "Lösche...");
+      try {
+        await deleteExercisePhoto(exId);
+      } catch (e) {}
+      await refreshMediaPanel(ex);
+      setMediaStatus(exId, "");
+    });
+  });
+
   document.getElementById("finishBtn").addEventListener("click", () => finishWorkout(day));
+}
+
+const photoFileInput = document.getElementById("photoFileInput");
+if (photoFileInput) {
+  photoFileInput.addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    const exId = pendingPhotoExerciseId;
+    if (!file || !exId) return;
+    const day = getTodayPlan();
+    const ex = day.exercises.find((x) => x.id === exId);
+    if (!ex) return;
+    setMediaStatus(exId, "Speichere Foto...");
+    try {
+      const blob = await resizeAndCompressImage(file);
+      await saveExercisePhoto(exId, blob);
+      await refreshMediaPanel(ex);
+      setMediaStatus(exId, "");
+    } catch (err) {
+      setMediaStatus(exId, "Fehler beim Speichern – bitte erneut versuchen.");
+    }
+  });
 }
 
 function finishWorkout(day) {
@@ -321,6 +443,7 @@ function finishWorkout(day) {
   state.currentWeights = {};
   state.currentFeedback = {};
   saveState();
+  expandedExercises.clear();
 
   const next = getTodayPlan();
   app.innerHTML = `
