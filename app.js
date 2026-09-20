@@ -14,6 +14,7 @@ function loadState() {
     currentFeedback: {},
     history: {},
     lastCompletedDate: null,
+    deviceSettings: {},
   };
 }
 
@@ -22,6 +23,17 @@ function saveState() {
 }
 
 let state = loadState();
+state.deviceSettings = state.deviceSettings || {};
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[c]);
+}
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -108,10 +120,22 @@ async function refreshMediaPanel(ex) {
 }
 
 function renderMediaPanel(ex) {
+  const settingValue = state.deviceSettings[ex.id] || "";
   return `
     <div class="media-panel" id="media-${ex.id}" data-ex="${ex.id}" data-has-photo="false">
       <div class="media-image">${iconFor(ex.illus)}</div>
       <div class="media-status" id="media-status-${ex.id}"></div>
+      <div class="device-setting">
+        <label class="device-setting-label" for="device-setting-${ex.id}">⚙️ Geräte-Einstellung</label>
+        <input
+          type="text"
+          class="device-setting-input"
+          id="device-setting-${ex.id}"
+          data-ex="${ex.id}"
+          placeholder="z. B. Sitz Stufe 4, Pin bei 8"
+          value="${escapeHtml(settingValue)}"
+        />
+      </div>
       <div class="media-actions">
         <button class="photo-add-btn" data-ex="${ex.id}">📷 Foto hinzufügen/ersetzen</button>
         <button class="photo-delete-btn" data-ex="${ex.id}" hidden>🗑️ Foto löschen</button>
@@ -367,6 +391,19 @@ function attachHandlers(day) {
         expandedExercises.add(exId);
       }
       render();
+    });
+  });
+
+  document.querySelectorAll(".device-setting-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      const exId = input.dataset.ex;
+      const val = input.value.trim();
+      if (val) {
+        state.deviceSettings[exId] = val;
+      } else {
+        delete state.deviceSettings[exId];
+      }
+      saveState();
     });
   });
 
