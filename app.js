@@ -284,6 +284,7 @@ function render() {
   const header = `
     <div class="header">
       <div class="day-label">${day.label}</div>
+      <div class="warmup-hint">🔥 10 Min. lockeres Cardio vor dem Training (z. B. Stepper, Rad, Laufband)</div>
       <div class="meta-row">
         <span>Session #${state.sessionCount + 1}</span>
         ${deload ? '<span class="badge deload">🔻 Deload-Woche</span>' : ""}
