@@ -166,20 +166,56 @@ function vibrate(ms) {
   if (navigator.vibrate) navigator.vibrate(ms);
 }
 
+// ---------- Vollbild-Timer-Overlay ----------
+function getTimerOverlay() {
+  let overlay = document.getElementById("timerOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.className = "timer-overlay";
+    overlay.id = "timerOverlay";
+    overlay.hidden = true;
+    overlay.innerHTML = `
+      <button class="timer-overlay-close" id="timerOverlayClose">✕ Schließen</button>
+      <div class="timer-overlay-phase" id="timerOverlayPhase"></div>
+      <div class="timer-overlay-time" id="timerOverlayTime"></div>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById("timerOverlayClose").addEventListener("click", () => {
+      clearActiveTimer();
+    });
+  }
+  return overlay;
+}
+
+function setTimerOverlay(phase, time) {
+  const overlay = getTimerOverlay();
+  overlay.hidden = false;
+  document.getElementById("timerOverlayPhase").textContent = phase;
+  document.getElementById("timerOverlayTime").textContent = time;
+}
+
+function hideTimerOverlay() {
+  const overlay = document.getElementById("timerOverlay");
+  if (overlay) overlay.hidden = true;
+}
+
 function startHoldTimer(seconds, displayEl) {
   clearActiveTimer();
   let remaining = seconds;
   displayEl.textContent = `⏱ ${remaining}s`;
+  setTimerOverlay("Halten", `${remaining}`);
   activeTimer = setInterval(() => {
     remaining--;
     if (remaining <= 0) {
       clearInterval(activeTimer);
       activeTimer = null;
       displayEl.textContent = "✅ Fertig!";
+      setTimerOverlay("Fertig! 💪", "✅");
       playBeep();
       vibrate([200, 100, 200]);
     } else {
       displayEl.textContent = `⏱ ${remaining}s`;
+      setTimerOverlay("Halten", `${remaining}`);
     }
   }, 1000);
 }
@@ -192,6 +228,7 @@ function startIntervalTimer(rounds, work, rest, displayEl) {
   function tick() {
     const label = phase === "work" ? "Hart" : "Locker";
     displayEl.textContent = `Runde ${round}/${rounds} – ${label} ${remaining}s`;
+    setTimerOverlay(`Runde ${round}/${rounds} – ${label}`, `${remaining}`);
     if (remaining <= 0) {
       vibrate(phase === "work" ? [150] : [150, 80, 150]);
       playBeep();
@@ -206,6 +243,7 @@ function startIntervalTimer(rounds, work, rest, displayEl) {
           clearInterval(activeTimer);
           activeTimer = null;
           displayEl.textContent = "✅ Intervalle fertig!";
+          setTimerOverlay("Fertig! 💪", "✅");
           return;
         }
       }
@@ -222,6 +260,7 @@ function clearActiveTimer() {
     clearInterval(activeTimer);
     activeTimer = null;
   }
+  hideTimerOverlay();
 }
 
 // ---------- Rendering ----------
