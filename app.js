@@ -208,53 +208,49 @@ function hideTimerOverlay() {
   }
 }
 
-function startHoldTimer(seconds, displayEl) {
-  clearActiveTimer();
-  let remaining = seconds;
-  displayEl.textContent = `⏱ ${remaining}s`;
-  setTimerOverlay("Halten", `${remaining}`);
-  activeTimer = setInterval(() => {
-    remaining--;
-    if (remaining <= 0) {
-      clearInterval(activeTimer);
-      activeTimer = null;
-      displayEl.textContent = "✅ Fertig!";
-      setTimerOverlay("Fertig! 💪", "✅");
-      playBeep();
-      vibrate([200, 100, 200]);
-    } else {
-      displayEl.textContent = `⏱ ${remaining}s`;
-      setTimerOverlay("Halten", `${remaining}`);
-    }
-  }, 1000);
-}
+function startIntervalTimer(rounds, work, rest, displayEl, opts) {
+  const {
+    workLabel = "Hart",
+    restLabel = "Locker",
+    roundLabel = "Runde",
+    finishText = "Intervalle fertig!",
+  } = opts || {};
 
-function startIntervalTimer(rounds, work, rest, displayEl) {
   clearActiveTimer();
   let round = 1;
   let phase = "work";
   let remaining = work;
+
+  function finish() {
+    clearInterval(activeTimer);
+    activeTimer = null;
+    displayEl.textContent = `✅ ${finishText}`;
+    setTimerOverlay("Fertig! 💪", "✅");
+  }
+
   function tick() {
-    const label = phase === "work" ? "Hart" : "Locker";
-    displayEl.textContent = `Runde ${round}/${rounds} – ${label} ${remaining}s`;
-    setTimerOverlay(`Runde ${round}/${rounds} – ${label}`, `${remaining}`, phase);
+    const label = phase === "work" ? workLabel : restLabel;
+    displayEl.textContent = `${roundLabel} ${round}/${rounds} – ${label} ${remaining}s`;
+    setTimerOverlay(`${roundLabel} ${round}/${rounds} – ${label}`, `${remaining}`, phase);
     if (remaining <= 0) {
-      vibrate(phase === "work" ? [150] : [150, 80, 150]);
-      playBeep();
       if (phase === "work") {
+        if (round >= rounds) {
+          // letzter Satz/letzte Runde geschafft -> keine weitere Pause mehr nötig
+          playBeep();
+          vibrate([200, 100, 200]);
+          finish();
+          return;
+        }
+        playBeep();
+        vibrate([150]);
         phase = "rest";
         remaining = rest;
       } else {
+        playBeep();
+        vibrate([150, 80, 150]);
         round++;
         phase = "work";
         remaining = work;
-        if (round > rounds) {
-          clearInterval(activeTimer);
-          activeTimer = null;
-          displayEl.textContent = "✅ Intervalle fertig!";
-          setTimerOverlay("Fertig! 💪", "✅");
-          return;
-        }
       }
     } else {
       remaining--;
@@ -355,7 +351,7 @@ function renderExercise(ex, deload) {
       : "";
 
   const timerButton = ex.holdSeconds
-    ? `<button class="timer-btn" data-hold="${ex.holdSeconds}" data-ex="${ex.id}">▶ Timer (${ex.holdSeconds}s)</button><div class="timer-display" id="timer-${ex.id}"></div>`
+    ? `<button class="timer-btn" data-hold="${ex.holdSeconds}" data-hold-sets="${ex.sets}" data-hold-rest="${ex.rest}" data-ex="${ex.id}">▶ ${ex.sets}x Halten starten (inkl. Pause)</button><div class="timer-display" id="timer-${ex.id}"></div>`
     : ex.timeBased && ex.finisher
     ? `<button class="timer-btn" data-rounds="${ex.rounds}" data-work="${ex.intervalWork}" data-rest="${ex.intervalRest}" data-ex="${ex.id}">▶ Intervalle starten</button><div class="timer-display" id="timer-${ex.id}"></div>`
     : "";
@@ -419,7 +415,13 @@ function attachHandlers(day) {
       const exId = btn.dataset.ex;
       const displayEl = document.getElementById(`timer-${exId}`);
       if (btn.dataset.hold) {
-        startHoldTimer(parseInt(btn.dataset.hold, 10), displayEl);
+        startIntervalTimer(
+          parseInt(btn.dataset.holdSets, 10),
+          parseInt(btn.dataset.hold, 10),
+          parseInt(btn.dataset.holdRest, 10),
+          displayEl,
+          { workLabel: "Halten", restLabel: "Pause", roundLabel: "Satz", finishText: "Alle Sätze fertig!" }
+        );
       } else {
         startIntervalTimer(
           parseInt(btn.dataset.rounds, 10),
