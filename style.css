@@ -351,6 +351,10 @@ body {
   padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
+.timer-overlay[hidden] {
+  display: none !important;
+}
+
 .timer-overlay-close {
   position: absolute;
   top: calc(16px + env(safe-area-inset-top, 0px));
@@ -380,4 +384,12 @@ body {
   color: #22c55e;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+.timer-overlay-time.phase-hart {
+  color: #ef4444;
+}
+
+.timer-overlay-time.phase-locker {
+  color: #22c55e;
 }

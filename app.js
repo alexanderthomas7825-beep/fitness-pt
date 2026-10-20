@@ -174,6 +174,7 @@ function getTimerOverlay() {
     overlay.className = "timer-overlay";
     overlay.id = "timerOverlay";
     overlay.hidden = true;
+    overlay.style.display = "none";
     overlay.innerHTML = `
       <button class="timer-overlay-close" id="timerOverlayClose">✕ Schließen</button>
       <div class="timer-overlay-phase" id="timerOverlayPhase"></div>
@@ -187,16 +188,24 @@ function getTimerOverlay() {
   return overlay;
 }
 
-function setTimerOverlay(phase, time) {
+function setTimerOverlay(phase, time, phaseKey) {
   const overlay = getTimerOverlay();
   overlay.hidden = false;
+  overlay.style.display = "flex";
   document.getElementById("timerOverlayPhase").textContent = phase;
-  document.getElementById("timerOverlayTime").textContent = time;
+  const timeEl = document.getElementById("timerOverlayTime");
+  timeEl.textContent = time;
+  timeEl.classList.remove("phase-hart", "phase-locker");
+  if (phaseKey === "work") timeEl.classList.add("phase-hart");
+  else if (phaseKey === "rest") timeEl.classList.add("phase-locker");
 }
 
 function hideTimerOverlay() {
   const overlay = document.getElementById("timerOverlay");
-  if (overlay) overlay.hidden = true;
+  if (overlay) {
+    overlay.hidden = true;
+    overlay.style.display = "none";
+  }
 }
 
 function startHoldTimer(seconds, displayEl) {
@@ -228,7 +237,7 @@ function startIntervalTimer(rounds, work, rest, displayEl) {
   function tick() {
     const label = phase === "work" ? "Hart" : "Locker";
     displayEl.textContent = `Runde ${round}/${rounds} – ${label} ${remaining}s`;
-    setTimerOverlay(`Runde ${round}/${rounds} – ${label}`, `${remaining}`);
+    setTimerOverlay(`Runde ${round}/${rounds} – ${label}`, `${remaining}`, phase);
     if (remaining <= 0) {
       vibrate(phase === "work" ? [150] : [150, 80, 150]);
       playBeep();
