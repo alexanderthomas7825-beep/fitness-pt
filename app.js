@@ -260,6 +260,29 @@ function startIntervalTimer(rounds, work, rest, displayEl, opts) {
   tick();
 }
 
+function startRestTimer(seconds, displayEl) {
+  clearActiveTimer();
+  let remaining = seconds;
+  function update() {
+    displayEl.textContent = `⏸ Pause ${remaining}s`;
+    setTimerOverlay("Pause", `${remaining}`, "rest");
+  }
+  update();
+  activeTimer = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(activeTimer);
+      activeTimer = null;
+      displayEl.textContent = "✅ Pause vorbei!";
+      setTimerOverlay("Pause vorbei! 💪", "✅");
+      playBeep();
+      vibrate([200, 100, 200]);
+    } else {
+      update();
+    }
+  }, 1000);
+}
+
 function clearActiveTimer() {
   if (activeTimer) {
     clearInterval(activeTimer);
@@ -354,6 +377,8 @@ function renderExercise(ex, deload) {
     ? `<button class="timer-btn" data-hold="${ex.holdSeconds}" data-hold-sets="${ex.sets}" data-hold-rest="${ex.rest}" data-ex="${ex.id}">▶ ${ex.sets}x Halten starten (inkl. Pause)</button><div class="timer-display" id="timer-${ex.id}"></div>`
     : ex.timeBased && ex.finisher
     ? `<button class="timer-btn" data-rounds="${ex.rounds}" data-work="${ex.intervalWork}" data-rest="${ex.intervalRest}" data-ex="${ex.id}">▶ Intervalle starten</button><div class="timer-display" id="timer-${ex.id}"></div>`
+    : ex.rest > 0
+    ? `<button class="timer-btn rest-btn" data-rest-only="${ex.rest}" data-ex="${ex.id}">⏸ Pause starten (${ex.rest}s)</button><div class="timer-display" id="timer-${ex.id}"></div>`
     : "";
 
   return `
@@ -422,6 +447,8 @@ function attachHandlers(day) {
           displayEl,
           { workLabel: "Halten", restLabel: "Pause", roundLabel: "Satz", finishText: "Alle Sätze fertig!" }
         );
+      } else if (btn.dataset.restOnly) {
+        startRestTimer(parseInt(btn.dataset.restOnly, 10), displayEl);
       } else {
         startIntervalTimer(
           parseInt(btn.dataset.rounds, 10),
