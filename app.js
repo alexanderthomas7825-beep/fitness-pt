@@ -305,7 +305,7 @@ function render() {
       <div class="day-label">${day.label}</div>
       <div class="warmup-hint">🔥 10 Min. lockeres Cardio vor dem Training (z. B. Stepper, Rad, Laufband)</div>
       <div class="meta-row">
-        <span>Session #${state.sessionCount + 1}</span>
+        <button id="sessionBtn" class="session-btn" title="Zähler korrigieren">Session #${state.sessionCount + 1} ✏️</button>
         ${deload ? '<span class="badge deload">🔻 Deload-Woche</span>' : ""}
       </div>
       ${doneToday ? '<div class="done-note">Heute schon als erledigt gespeichert ✅ – du kannst trotzdem nochmal trainieren und erneut abschließen.</div>' : ""}
@@ -509,6 +509,7 @@ function attachHandlers(day) {
   });
 
   document.getElementById("finishBtn").addEventListener("click", () => finishWorkout(day));
+  document.getElementById("sessionBtn").addEventListener("click", correctSessionCount);
 }
 
 const photoFileInput = document.getElementById("photoFileInput");
@@ -530,6 +531,23 @@ if (photoFileInput) {
       setMediaStatus(exId, "Fehler beim Speichern – bitte erneut versuchen.");
     }
   });
+}
+
+// Korrigiert nur den Session-Zähler (Workout-Reihenfolge & Deload) – Gewichte und Verlauf bleiben unverändert
+function correctSessionCount() {
+  const input = prompt(
+    "Wie viele Workouts hast du bisher wirklich abgeschlossen?\n(Gewichte und Verlauf bleiben erhalten.)",
+    String(state.sessionCount)
+  );
+  if (input == null) return;
+  const n = parseInt(input, 10);
+  if (isNaN(n) || n < 0) {
+    alert("Bitte eine Zahl ab 0 eingeben.");
+    return;
+  }
+  state.sessionCount = n;
+  saveState();
+  render();
 }
 
 function finishWorkout(day) {
